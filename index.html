@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Toko Rahmat | Sembako Premium Tembalang</title>
+
+    <!-- GSAP -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollToPlugin.min.js"></script>
+
+    <!-- Lenis (smooth scroll) -->
+    <script src="https://cdn.jsdelivr.net/gh/studio-freight/lenis@1.0.29/bundled/lenis.min.js"></script>
+
+    <!-- Leaflet map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Fonts & icons -->
+    <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+
+    <style>
+        /* --- 2. CSS RESET & VARIABLES --- */
+        :root {
+            --red-primary: #D72638;
+            --red-dark: #9B1B29;
+            --black: #0F0F0F;
+            --dark-grey: #1A1A1A;
+            --light-grey: #F4F4F4;
+            --white: #FFFFFF;
+            --gold: #FFC107;
+            --easing: cubic-bezier(0.19, 1, 0.22, 1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html.lenis { height: auto; } 
+        .lenis.lenis-smooth { scroll-behavior: auto; }
+        body {
+            background-color: var(--light-grey);
+            color: var(--black);
+            font-family: 'Satoshi', sans-serif;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* --- CUSTOM CURSOR (kept optional: disabled cursor:none) --- */
+        #cursor { display:none; } /* hide custom cursor by default for real sites */
+
+        /* --- PRELOADER --- */
+        .preloader {
+            position: fixed; inset: 0; background: var(--red-primary); z-index: 10000;
+            display: flex; justify-content: center; align-items: center; color: white;
+            flex-direction: column;
+        }
+        .preloader-text { font-size: 5vw; font-weight: 900; overflow: hidden; }
+        .preloader-text span { display: inline-block; transform: translateY(100%); }
+
+        /* --- BUTTONS --- */
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center;
+            padding: 12px 24px; border-radius: 50px; font-weight: 700; font-size: 0.95rem;
+            text-transform: uppercase; letter-spacing: 1px; transition: 0.3s;
+            position: relative; overflow: hidden; border: none; cursor: pointer;
+        }
+        .btn-primary { background: var(--black); color: var(--white); }
+        .btn-primary:hover { background: var(--red-primary); color: var(--white); }
+
+        /* --- HEADER --- */
+        header {
+            position: fixed; top: 0; left: 0; width: 100%; padding: 14px 30px;
+            display: flex; justify-content: space-between; align-items: center;
+            z-index: 100; background: rgba(255,255,255,0.02); backdrop-filter: blur(6px);
+        }
+        .logo { font-weight: 900; font-size: 1.3rem; letter-spacing: -1px; color: var(--black); }
+        .header-right { display: flex; align-items: center; gap: 14px; }
+
+        /* Search */
+        .search-wrap { position: relative; width: 320px; max-width: 45vw; }
+        .search-input {
+            width: 100%; padding: 10px 14px 10px 40px; border-radius: 12px; border: 1px solid #e6e6e6;
+            font-size: 0.95rem; outline: none;
+        }
+        .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); opacity: 0.6; }
+
+        .cart-trigger {
+            display: flex; align-items: center; gap: 8px; font-weight: 700;
+            cursor: pointer; background: transparent; border: 1px solid transparent; padding: 8px 12px; border-radius: 12px;
+        }
+        .cart-count { 
+            background: var(--black); color: var(--white); width: 24px; height: 24px;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem;
+        }
+
+        /* --- HERO --- */
+        .hero {
+            height: 86vh; width: 100%; position: relative; display: flex; align-items: center; justify-content: center;
+            background: var(--white); overflow: hidden; padding-top: 80px;
+        }
+        .hero-content { text-align: center; z-index: 2; max-width: 900px; padding: 20px; }
+        .hero-title {
+            font-size: clamp(28px, 8vw, 64px); line-height: 0.95; font-weight: 900; margin-bottom: 14px;
+        }
+        .hero-desc { font-size: 1.05rem; color: #555; margin-bottom: 18px; }
+
+        /* --- MARQUEE --- */
+        .marquee { background: var(--red-primary); color: white; padding: 14px 0; overflow: hidden; white-space: nowrap; }
+        .marquee-content { display: inline-block; animation: scroll 18s linear infinite; font-size: 1rem; font-weight: 900; text-transform: uppercase; }
+        @keyframes scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+        /* --- LOCATION & MAP --- */
+        .location-section { padding: 60px 5%; background: var(--dark-grey); color: white; border-radius: 40px 40px 0 0; margin-top: 30px; }
+        .loc-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 30px; align-items: center; }
+        .loc-text h2 { font-size: clamp(28px, 6vw, 48px); margin-bottom: 10px; font-weight: 800; }
+        #map { width: 100%; height: 420px; border-radius: 20px; filter: grayscale(100%) invert(100%) contrast(90%); transition: 0.5s;}
+        #map:hover { filter: grayscale(0%) invert(0%); }
+
+        /* --- CATALOG --- */
+        .catalog-section { padding: 80px 5%; background: var(--light-grey); }
+        .cat-header { display: flex; justify-content: space-between; align-items: end; gap: 20px; margin-bottom: 18px; flex-wrap: wrap; }
+        .cat-header h2 { font-size: clamp(26px, 6vw, 44px); font-weight: 900; line-height: 0.9; }
+        .filters { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 8px; }
+        .filter-btn { padding: 8px 18px; border: 1px solid #ddd; border-radius: 999px; background: transparent; font-weight: 600; cursor: pointer; }
+        .filter-btn.active, .filter-btn:hover { background: var(--black); color: white; border-color: var(--black); }
+
+        .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; margin-top: 18px; }
+        .product-card { background: var(--white); border-radius: 16px; padding: 12px; position: relative; transition: 0.4s var(--easing); border: 1px solid transparent; display: flex; flex-direction: column; height: 100%; }
+        .product-card:hover { transform: translateY(-8px); box-shadow: 0 18px 36px rgba(0,0,0,0.06); border-color: var(--red-primary); }
+
+        .p-image { height: 150px; display: flex; align-items: center; justify-content: center; border-radius: 12px; overflow: hidden; background: linear-gradient(180deg,#fff,#f8f8f8); margin-bottom: 12px; }
+        .p-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+        .p-cat { font-size: 0.75rem; text-transform: uppercase; color: #888; font-weight: 700; letter-spacing: 1px; }
+        .p-name { font-size: 1rem; font-weight: 800; margin: 6px 0; line-height: 1.2; flex-grow: 1; }
+        .p-price { font-size: 1.05rem; color: var(--red-primary); font-weight: 900; }
+        .p-add-btn { width: 100%; padding: 10px; margin-top: 12px; border-radius: 10px; border: 2px solid var(--black); background: transparent; font-weight: 800; cursor: pointer; display:flex; align-items:center; justify-content:center; gap:8px; }
+        .p-add-btn:hover { background: var(--black); color: white; }
+
+        /* CART DRAWER */
+        .cart-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 900; opacity: 0; pointer-events: none; transition: 0.4s; backdrop-filter: blur(3px); }
+        .cart-drawer { position: fixed; top: 0; right: 0; width: 100%; max-width: 480px; height: 100vh; background: var(--white); z-index: 901; transform: translateX(100%); transition: 0.45s var(--easing); display: flex; flex-direction: column; }
+        .cart-open .cart-overlay { opacity: 1; pointer-events: all; }
+        .cart-open .cart-drawer { transform: translateX(0); }
+
+        .drawer-header { padding: 20px 24px; border-bottom: 1px solid #eee; display:flex; justify-content:space-between; align-items:center; }
+        .drawer-content { flex: 1; overflow-y: auto; padding: 20px; }
+        .drawer-footer { padding: 18px; background: var(--light-grey); border-top: 1px solid #eee; }
+
+        .cart-item { display:flex; justify-content:space-between; align-items:center; margin-bottom: 14px; padding-bottom: 12px; border-bottom:1px dashed #eee; }
+        .cart-qty { display:flex; align-items:center; gap:6px; }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .search-wrap { width: 220px; }
+            .loc-grid { grid-template-columns: 1fr; }
+            #map { height: 300px; }
+        }
+        @media (max-width: 520px) {
+            header { padding: 12px; }
+            .search-wrap { display: none; } /* hide search on very small screens to save space, search remains in catalog */
+            .hero { padding-top: 100px; }
+            .cat-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+        }
+    </style>
+</head>
+<body class="loading">
+
+    <!-- PRELOADER -->
+    <div class="preloader">
+        <div class="preloader-text"><span>TOKO</span></div>
+        <div class="preloader-text"><span>RAHMAT</span></div>
+    </div>
+
+    <!-- HEADER -->
+    <header>
+        <div class="logo">TOKO RAHMAT</div>
+        <div class="header-right">
+            <div class="search-wrap" title="Cari produk (ketik lalu tekan Enter)">
+                <span class="material-icons-round search-icon">search</span>
+                <input id="global-search" class="search-input" type="search" placeholder="Cari produk: beras, indomie, minyak..." />
+            </div>
+
+            <div class="cart-trigger" onclick="toggleCart()" aria-label="Buka keranjang">
+                <span style="font-weight:700;">CART</span>
+                <span class="material-icons-round">shopping_bag</span>
+                <div class="cart-count" id="cart-badge">0</div>
+            </div>
+        </div>
+    </header>
+
+    <main id="smooth-wrapper">
+        <div id="smooth-content">
+
+            <!-- HERO -->
+            <section class="hero">
+                <div class="hero-content">
+                    <h1 class="hero-title">SEMBAKO PREMIUM TEMBALANG</h1>
+                    <p class="hero-desc">Pusat kebutuhan harian mahasiswa & warga. Harga bersahabat, kualitas pejabat, antar cepat.</p>
+                    <div>
+                        <button class="btn btn-primary" onclick="scrollToCatalog()">Mulai Belanja</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- MARQUEE -->
+            <div class="marquee">
+                <div class="marquee-content">
+                    BERAS PULEN • MINYAK JERNIH • TELUR SEGAR • ANTAR GRATIS AREA SIROJUDIN • GAS LPG 24 JAM • GALON AQUA • INDOMIE LENGKAP •
+                    BERAS PULEN • MINYAK JERNIH • TELUR SEGAR • ANTAR GRATIS AREA SIROJUDIN • GAS LPG 24 JAM • GALON AQUA • INDOMIE LENGKAP •
+                </div>
+            </div>
+
+            <!-- LOCATION -->
+            <section class="location-section" id="location">
+                <div class="loc-grid">
+                    <div class="loc-text">
+                        <h2>LOKASI<br>KAMI</h2>
+                        <p>Strategis di jantung Tembalang. Dekat kampus, dekat kosan, dekat di hati.</p>
+
+                        <div style="margin-top:18px; border-top:1px solid rgba(255,255,255,0.08); padding-top:16px;">
+                            <div style="margin-bottom:10px;">
+                                <label style="display:block; color:#bbb; font-size:0.8rem; text-transform:uppercase;">Alamat</label>
+                                <div>Jl. Sirojudin No. 15, Tembalang, Semarang</div>
+                            </div>
+                            <div style="margin-bottom:10px;">
+                                <label style="display:block; color:#bbb; font-size:0.8rem; text-transform:uppercase;">Jam Operasional</label>
+                                <div>Setiap Hari: 07:00 - 21:00 WIB</div>
+                            </div>
+                            <div>
+                                <label style="display:block; color:#bbb; font-size:0.8rem; text-transform:uppercase;">Kontak</label>
+                                <div>0812-3456-7890 (WA)</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="loc-map">
+                        <div id="map"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- CATALOG -->
+            <section class="catalog-section" id="catalog">
+                <div class="cat-header">
+                    <h2>KATALOG<br>PRODUK</h2>
+
+                    <div style="display:flex; gap:12px; align-items:center;">
+                        <div class="filters" id="filter-buttons">
+                            <button class="filter-btn active" onclick="filterCat('all', this)">Semua</button>
+                            <button class="filter-btn" onclick="filterCat('Sembako', this)">Sembako</button>
+                            <button class="filter-btn" onclick="filterCat('Mie', this)">Mie Instan</button>
+                            <button class="filter-btn" onclick="filterCat('Minuman', this)">Minuman</button>
+                            <button class="filter-btn" onclick="filterCat('Gas', this)">Gas & Galon</button>
+                            <button class="filter-btn" onclick="filterCat('Kebutuhan', this)">Kebutuhan</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-bottom:8px; color:#666; font-size:0.95rem;">Ketik di kotak pencarian (atas) untuk mencari produk. Kamu juga bisa memfilter kategori.</div>
+
+                <div class="product-grid" id="product-list"></div>
+            </section>
+
+            <footer style="background: var(--black); color: white; padding: 40px; text-align: center;">
+                <h1 style="font-weight: 900; margin-bottom: 10px;">TOKO RAHMAT</h1>
+                <p style="color: #bbb;">© 2025 All Rights Reserved. Designed for Tembalang Community.</p>
+            </footer>
+
+        </div>
+    </main>
+
+    <!-- CART DRAWER -->
+    <div class="cart-overlay" onclick="toggleCart()"></div>
+    <aside class="cart-drawer" aria-hidden="true">
+        <div class="drawer-header">
+            <h2>Keranjang</h2>
+            <button onclick="toggleCart()" style="background:transparent; border:none; cursor:pointer;">
+                <span class="material-icons-round" style="font-size:26px;">close</span>
+            </button>
+        </div>
+
+        <div class="drawer-content" id="cart-items">
+            <div style="text-align:center; color:#999; margin-top: 50px;">Belum ada barang belanjaan.</div>
+        </div>
+
+        <div class="drawer-footer">
+            <div class="checkout-form" style="margin-bottom:12px;">
+                <label style="display:block; font-weight:700; font-size:0.8rem; margin-bottom:6px;">Nama Penerima</label>
+                <input type="text" id="cust-name" placeholder="Masukan Nama Anda" style="width:100%; padding:12px; border-radius:8px; border:1px solid #ddd; margin-bottom:8px;">
+                <label style="display:block; font-weight:700; font-size:0.8rem; margin-bottom:6px;">Alamat Lengkap / COD</label>
+                <textarea id="cust-addr" rows="2" placeholder="Nama Kos, Gang, Warna Pagar..." style="width:100%; padding:10px; border-radius:8px; border:1px solid #ddd;"></textarea>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:1.1rem; font-weight:900; margin-bottom:10px;">
+                <span>Total</span>
+                <span id="cart-total">Rp 0</span>
+            </div>
+
+            <button class="btn-checkout btn-primary" style="width:100%; padding:14px; border-radius:12px;" onclick="checkoutWA()">
+                Pesan via WhatsApp <span class="material-icons-round" style="margin-left:8px;">send</span>
+            </button>
+        </div>
+    </aside>
+
+    <script>
+        // --- PRODUCTS ---
+        const products = [
+            { id: 1, name: "Beras Pandan Wangi 5kg", price: 72000, cat: "Sembako", img: "img/BP_BERAS.jpg" },
+            { id: 2, name: "Beras Rojo Lele 5kg", price: 68000, cat: "Sembako", img: "img/RL_BERAS.jpg" },
+            { id: 3, name: "Minyak Goreng Bimoli 2L", price: 38000, cat: "Sembako", img: "img/MINYAK_B.jpg" },
+            { id: 4, name: "Telur Ayam (1kg)", price: 28000, cat: "Sembako", img: "img/TELUR_1KG.jpg" },
+            { id: 5, name: "Gula Pasir Gulaku 1kg", price: 17000, cat: "Sembako", img: "img/GULAKU_1KG.jpg" },
+            { id: 6, name: "Tepung Segitiga Biru", price: 13000, cat: "Sembako", img: "img/TEPUNG_1KG.jpg" },
+            { id: 7, name: "Indomie Goreng (5pcs)", price: 15000, cat: "Mie", img: "img/IM_GO.jpg" },
+            { id: 8, name: "Indomie Ayam Bawang (5pcs)", price: 14500, cat: "Mie", img: "img/IM_AB.jpg" },
+            { id: 9, name: "Indomie Soto (5pcs)", price: 14500, cat: "Mie", img: "img/IM_SOTO.jpg" },
+            { id: 10, name: "Mie Sedaap Goreng (1pcs)", price: 3000, cat: "Mie", img: "img/SDP_GO.jpg" },
+            { id: 11, name: "Pop Mie Ayam", price: 6000, cat: "Mie", img: "img/POPMIE.jpeg" },
+            { id: 12, name: "Aqua Galon (Refill)", price: 20000, cat: "Gas", img: "img/GALON.jpeg" },
+            { id: 13, name: "Gas LPG 3kg (Melon)", price: 23000, cat: "Gas", img: "img/GAS.jpeg" },
+            { id: 14, name: "Isi Ulang Galon (RO)", price: 6000, cat: "Gas", img: "img/REFIL.jpeg" },
+            { id: 15, name: "Kopi Kapal Api Mix (10s)", price: 14000, cat: "Minuman", img: "img/KAPI.jpeg" },
+            { id: 16, name: "Good Day Cappuccino (1pcs)", price: 2500, cat: "Minuman", img: "img/GDAY.jpeg" },
+            { id: 17, name: "Teh Pucuk Harum", price: 4000, cat: "Minuman", img: "img/TEHPUCUK.jpeg" },
+            { id: 18, name: "Le Minerale 600ml", price: 3500, cat: "Minuman", img: "img/LEMIN.jpeg" },
+            { id: 19, name: "Susu Ultra Milk 1L", price: 19000, cat: "Minuman", img: "img/UMILK.jpeg" },
+            { id: 20, name: "Sabun Lifebuoy Cair", price: 25000, cat: "Kebutuhan", img: "img/LBOY.jpeg" },
+            { id: 21, name: "Pepsodent Herbal 190g", price: 18000, cat: "Kebutuhan", img: "img/SODEN.jpeg" },
+            { id: 22, name: "Sunlight Cuci Piring", price: 5000, cat: "Kebutuhan", img: "img/SUNL.jpeg" },
+            { id: 23, name: "Rinso Cair Sachet", price: 1500, cat: "Kebutuhan", img: "img/RINSO.jpeg" },
+            { id: 24, name: "Shampo Pantene", price: 12000, cat: "Kebutuhan", img: "img/SPOP.jpeg" },
+            { id: 25, name: "Kecap Bango 550ml", price: 24000, cat: "Sembako", img: "img/KCAP.jpeg" },
+            { id: 26, name: "Saus Sambal ABC", price: 15000, cat: "Sembako", img: "img/SAOS.jpeg" },
+            { id: 27, name: "Masako Ayam (Renceng)", price: 5500, cat: "Sembako", img: "img/MASAKO.jpeg" },
+            { id: 28, name: "Blueband Sachet", price: 10000, cat: "Sembako", img: "img/BBAND.jpeg" },
+            { id: 29, name: "Santan Kara", price: 3500, cat: "Sembako", img: "img/KARA.jpeg" },
+            { id: 30, name: "Roti Tawar Sari Roti", price: 16000, cat: "Sembako", img: "img/ROTI.jpeg" },
+            { id: 31, name: "Teh Celup Sariwangi", price: 7500, cat: "Minuman", img: "img/TEH.jpeg" },
+            { id: 32, name: "Gula Batu", price: 5000, cat: "Sembako", img: "img/GB.jpeg" },
+            { id: 33, name: "Minyak Kayu Putih", price: 18000, cat: "Kebutuhan", img: "img/KP.jpeg" },
+            { id: 34, name: "Autan Sachet", price: 1000, cat: "Kebutuhan", img: "img/AUTAN.jpeg" },
+            { id: 35, name: "Tisu Wajah Nice", price: 12000, cat: "Kebutuhan", img: "img/TISU.jpeg" },
+            { id: 36, name: "Vixal Pembersih", price: 18000, cat: "Kebutuhan", img: "img/VIXAL.jpeg" },
+            { id: 37, name: "Sikat Gigi Formula", price: 5000, cat: "Kebutuhan", img: "img/SG.jpeg" },
+            { id: 38, name: "Susu Kental Manis", price: 12000, cat: "Minuman", img: "img/SKM.jpeg" },
+            { id: 39, name: "Nutrisari Jeruk (10s)", price: 12000, cat: "Minuman", img: "img/NUTRI.jpeg" },
+            { id: 40, name: "Energen Coklat (10s)", price: 18000, cat: "Minuman", img: "img/ENERGEN.jpeg" },
+            { id: 41, name: "Beras Merah 1kg", price: 18000, cat: "Sembako", img: "img/BM.jpeg" },
+            { id: 42, name: "Indomie Kari Ayam", price: 3500, cat: "Mie", img: "img/IM_KAYAM.jpeg" },
+            { id: 43, name: "Mie Burung Dara", price: 4000, cat: "Mie", img: "img/MD.jpeg" },
+            { id: 44, name: "Bihun Jagung", price: 5000, cat: "Mie", img: "img/BIHUN.jpeg" },
+            { id: 45, name: "Sarden ABC Kecil", price: 11000, cat: "Sembako", img: "img/SARDEN.jpe" },
+            { id: 46, name: "Kornet Sapi", price: 15000, cat: "Sembako", img: "img/KORNET.jpeg" },
+            { id: 47, name: "Keju Kraft Cheddar", price: 22000, cat: "Sembako", img: "img/KEJU.jpeg" },
+            { id: 48, name: "Coklat Batang", price: 15000, cat: "Sembako", img: "img/COKLAT.jpeg" },
+            { id: 49, name: "Meses Ceres", price: 12000, cat: "Sembako", img: "img/CERES.jpeg" },
+            { id: 50, name: "Tepung Tapioka", price: 8000, cat: "Sembako", img: "img/TTPIOKA.jpeg" }
+        ];
+
+        // Cache DOM elements
+        const DOM = {
+            globalSearch: null,
+            productList: null,
+            cartItems: null,
+            cartTotal: null,
+            cartBadge: null,
+            filterBtns: null,
+            catalog: null,
+            cartDrawer: null,
+            custName: null,
+            custAddr: null,
+            body: document.body
+        };
+
+        let cart = [];
+        let currentFilter = 'all';
+        let currentSearch = '';
+        let searchDebounceTimer = null;
+
+        // --- UTILITY FUNCTIONS ---
+        const escapeHtml = (() => {
+            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
+            const regex = /[&<>"]/g;
+            return (str) => str.replace(regex, (m) => map[m]);
+        })();
+
+        const formatPrice = (num) => `Rp ${num.toLocaleString('id-ID')}`;
+
+        const debounce = (fn, delay) => {
+            return function(...args) {
+                clearTimeout(searchDebounceTimer);
+                searchDebounceTimer = setTimeout(() => fn.apply(this, args), delay);
+            };
+        };
+
+        // --- INIT ---
+        document.addEventListener("DOMContentLoaded", () => {
+            // Cache DOM elements
+            DOM.globalSearch = document.getElementById('global-search');
+            DOM.productList = document.getElementById('product-list');
+            DOM.cartItems = document.getElementById('cart-items');
+            DOM.cartTotal = document.getElementById('cart-total');
+            DOM.cartBadge = document.getElementById('cart-badge');
+            DOM.catalog = document.getElementById('catalog');
+            DOM.cartDrawer = document.querySelector('.cart-drawer');
+            DOM.custName = document.getElementById('cust-name');
+            DOM.custAddr = document.getElementById('cust-addr');
+
+            // Init Lenis smooth scroll
+            const lenis = new Lenis({
+                duration: 1.2,
+                easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t))
+            });
+            gsap.ticker.add((time) => lenis.raf(time * 1000));
+
+            // Preloader animation
+            const tl = gsap.timeline();
+            tl.to(".preloader-text span", { y: 0, duration: 0.7, ease: "power4.out", stagger: 0.08 })
+                .to(".preloader", { y: "-100%", duration: 0.9, ease: "power4.inOut", delay: 0.4 });
+
+            // Init map
+            initMap();
+
+            // Render products
+            renderCatalog('all');
+
+            // Search input (debounced)
+            DOM.globalSearch.addEventListener('input', debounce((e) => {
+                currentSearch = e.target.value.trim().toLowerCase();
+                renderCatalog(currentFilter);
+            }, 220));
+
+            // Allow Enter to jump to catalog
+            DOM.globalSearch.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    DOM.catalog.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+
+        // --- MAP ---
+        function initMap() {
+            const mapEl = L.map('map').setView([-7.0505, 110.4406], 15);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+                subdomains: 'abcd',
+                maxZoom: 20
+            }).addTo(mapEl);
+
+            const rahmatIcon = L.divIcon({
+                className: 'custom-icon',
+                html: '<div style="background:#D72638; width:18px; height:18px; border-radius:50%; border:3px solid white; box-shadow:0 0 8px rgba(215,38,56,0.8);"></div>'
+            });
+
+            L.marker([-7.0505, 110.4406], {icon: rahmatIcon}).addTo(mapEl)
+                .bindPopup('<strong style="color:black">Toko Rahmat</strong><br>Sembako Murah Disini!');
+        }
+
+        // --- RENDER CATALOG ---
+        function renderCatalog(category) {
+            currentFilter = category || currentFilter;
+            DOM.productList.innerHTML = '';
+
+            // Filter by category and search
+            let filtered = category === 'all' ? products.slice() : products.filter(p => p.cat === category);
+
+            if (currentSearch) {
+                filtered = filtered.filter(p => 
+                    p.name.toLowerCase().includes(currentSearch) || p.cat.toLowerCase().includes(currentSearch)
+                );
+            }
+
+            if (!filtered.length) {
+                DOM.productList.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:#666; padding:30px 0;">Produk tidak ditemukan.</div>';
+                return;
+            }
+
+            filtered.forEach((p, i) => {
+                const card = document.createElement('div');
+                card.className = 'product-card';
+                card.innerHTML = `
+                    <div class="p-image">
+                        <img loading="lazy" src="${p.img}" alt="${escapeHtml(p.name)}" />
+                    </div>
+                    <div class="p-cat">${escapeHtml(p.cat)}</div>
+                    <div class="p-name">${escapeHtml(p.name)}</div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:8px;">
+                        <div class="p-price">${formatPrice(p.price)}</div>
+                        <button class="p-add-btn" onclick="addToCart(${p.id})"><span style="font-weight:800;">ADD</span> <span class="material-icons-round" style="font-size:18px;">add_shopping_cart</span></button>
+                    </div>
+                `;
+                DOM.productList.appendChild(card);
+
+                // Stagger animation
+                gsap.from(card, {
+                    y: 30, opacity: 0, duration: 0.6, delay: i * 0.03, ease: "power2.out",
+                    scrollTrigger: { trigger: card, start: "top 90%" }
+                });
+            });
+        }
+
+        // Filter button handler
+        function filterCat(cat, btn) {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentFilter = cat;
+            renderCatalog(cat);
+        }
+
+        function scrollToCatalog() {
+            DOM.catalog.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // --- CART LOGIC ---
+        function toggleCart() {
+            DOM.body.classList.toggle('cart-open');
+            DOM.cartDrawer.setAttribute('aria-hidden', !DOM.body.classList.contains('cart-open'));
+        }
+
+        function addToCart(id) {
+            const item = products.find(p => p.id === id);
+            if (!item) return;
+            
+            const exist = cart.find(c => c.id === id);
+            if (exist) exist.qty++; 
+            else cart.push({...item, qty: 1});
+            
+            updateCart();
+            gsap.fromTo(DOM.cartBadge, { scale: 1.6 }, { scale: 1, duration: 0.5, ease: "elastic.out(1,0.5)" });
+        }
+
+        function updateCart() {
+            const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+            const count = cart.reduce((sum, item) => sum + item.qty, 0);
+
+            DOM.cartBadge.innerText = count;
+            DOM.cartTotal.innerText = formatPrice(total);
+
+            DOM.cartItems.innerHTML = cart.length ? '' : '<div style="text-align:center; color:#999; margin-top:50px;">Keranjang kosong</div>';
+
+            cart.forEach(item => {
+                const itemEl = document.createElement('div');
+                itemEl.className = 'cart-item';
+                itemEl.innerHTML = `
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <div style="width:56px; height:56px; border-radius:8px; overflow:hidden; background:#f6f6f6;">
+                            <img src="${item.img}" alt="${escapeHtml(item.name)}" style="width:100%; height:100%; object-fit:cover;" />
+                        </div>
+                        <div>
+                            <div style="font-weight:800;">${escapeHtml(item.name)}</div>
+                            <div style="font-size:0.85rem; color:#777;">${formatPrice(item.price)}</div>
+                        </div>
+                    </div>
+                    <div style="display:flex; flex-direction:column; align-items:flex-end;">
+                        <div style="font-weight:900; margin-bottom:6px;">${formatPrice(item.price * item.qty)}</div>
+                        <div class="cart-qty">
+                            <button style="padding:6px 8px; border-radius:6px; border:1px solid #ddd; background:#fff; cursor:pointer;" onclick="decreaseQty(${item.id})">-</button>
+                            <div style="min-width:26px; text-align:center;">${item.qty}</div>
+                            <button style="padding:6px 8px; border-radius:6px; border:1px solid #ddd; background:#fff; cursor:pointer;" onclick="increaseQty(${item.id})">+</button>
+                        </div>
+                    </div>
+                `;
+                DOM.cartItems.appendChild(itemEl);
+            });
+
+            if (cart.length > 0) {
+                const actions = document.createElement('div');
+                actions.style.cssText = 'display:flex; gap:8px; margin-top:12px;';
+                actions.innerHTML = `
+                    <button style="flex:1; padding:10px; border-radius:8px; border:1px solid #ddd; background:#fff; cursor:pointer;" onclick="clearCart()">Kosongkan</button>
+                    <button style="flex:1; padding:10px; border-radius:8px; border:none; background:#25D366; color:#fff; font-weight:800; cursor:pointer;" onclick="checkoutWA()">Pesan Sekarang</button>
+                `;
+                DOM.cartItems.appendChild(actions);
+            }
+        }
+
+        function increaseQty(id) {
+            const item = cart.find(c => c.id === id);
+            if (item) item.qty++;
+            updateCart();
+        }
+
+        function decreaseQty(id) {
+            const item = cart.find(c => c.id === id);
+            if (item) {
+                item.qty--;
+                if (item.qty <= 0) cart = cart.filter(c => c.id !== id);
+            }
+            updateCart();
+        }
+
+        function clearCart() {
+            if (!confirm('Kosongkan keranjang?')) return;
+            cart = [];
+            updateCart();
+        }
+
+        // --- CHECKOUT VIA WHATSAPP ---
+        function checkoutWA() {
+            if (!cart.length) return alert('Keranjang kosong!');
+            
+            const name = DOM.custName.value.trim();
+            const addr = DOM.custAddr.value.trim();
+            
+            if (!name || !addr) return alert('Mohon isi nama dan alamat!');
+
+            const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+            const items = cart.map(item => 
+                `- ${encodeURIComponent(item.name)} (${item.qty}x) : Rp ${(item.price * item.qty).toLocaleString('id-ID')}`
+            ).join('%0A');
+
+            const msg = `*ORDER BARU TOKO RAHMAT*%0A%0A👤 Nama: ${encodeURIComponent(name)}%0A🏠 Alamat: ${encodeURIComponent(addr)}%0A%0A*PESANAN:*%0A${items}%0A%0A*TOTAL BAYAR: Rp ${total.toLocaleString('id-ID')}*%0A%0ATerima kasih.`;
+
+            window.open(`https://wa.me/6285226096022?text=${msg}`, '_blank');
+        }
+
+    </script>
+</body>
+</html>
